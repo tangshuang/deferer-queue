@@ -38,7 +38,8 @@ options:
 - mode: how to run defer, default in parallel, optional
   - parallel: run defer immediately after pushing
   - serial: defer will run one by one after each deferer resolved
-  - switch: always use the last deferer's results, when push a new defer, the old deferers will be dropped
+  - switch: always use the last defer, when push a new defer, the old deferers will be dropped
+  - shift: use first defer at the start of queue, then use the latest defer after the previous defer finish
 - autoStart: whether to run queue immediately when invoke `push`
 
 ### push(defer, success, fail, cancel)
