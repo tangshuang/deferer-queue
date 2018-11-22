@@ -82,16 +82,13 @@ export class DefererQueue {
     const shouldBeDroppedWhenFinish = (item) => {
       // item !== this.queue[0] means clear/stop/end/cancel was run during the defer is running
       // so that there is no need to run item any more
-      if (!this.queue[0] || item !== this.queue[0]) {
-        run()
-        return true
-      }
-      return false
+      return !this.queue[0] || item !== this.queue[0]
     }
     const success = (item) => (...args) => {
       item.status = 2
 
       if (shouldBeDroppedWhenFinish(item)) {
+        run()
         return
       }
 
@@ -106,6 +103,7 @@ export class DefererQueue {
       item.status = -1
 
       if (shouldBeDroppedWhenFinish(item)) {
+        run()
         return
       }
 
@@ -146,8 +144,12 @@ export class DefererQueue {
         item.status = 2
 
         if (shouldBeDroppedWhenFinish(item)) {
+          run()
           return
         }
+
+        // remove current item
+        this.queue.shift()
 
         // drop the current running defer if a new one pushed
         if (this.queue.length) {
@@ -163,8 +165,12 @@ export class DefererQueue {
         item.status = -1
 
         if (shouldBeDroppedWhenFinish(item)) {
+          run()
           return
         }
+
+        // remove current item
+        this.queue.shift()
 
         // drop the current running defer if a new one pushed
         if (this.queue.length) {
@@ -191,6 +197,9 @@ export class DefererQueue {
           if (this.queue[0] === item) {
             typeof callback === 'function' && callback(...args)
             resolve(...args)
+
+            // remove current item
+            this.queue.shift()
           }
 
           // if there are some new defers pushed into queue, use the latest to continue
@@ -203,9 +212,17 @@ export class DefererQueue {
             this.end()
           }
         }).catch((e) => {
-          typeof fallback === 'function' && fallback(e)
-          reject(e)
-          this.fallbacks.forEach(fn => fn(e))
+          item.status = -1
+
+          // the queue was not changed, which means stop/cancel/end/clear was not called
+          if (this.queue[0] === item) {
+            typeof fallback === 'function' && fallback(e)
+            reject(e)
+            this.fallbacks.forEach(fn => fn(e))
+
+            // remove current item
+            this.queue.shift()
+          }
 
           // even though there is an error, the queue will continue
           if (this.queue.length) {

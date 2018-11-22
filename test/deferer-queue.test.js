@@ -74,13 +74,13 @@ describe('DefererQueue', () => {
         setTimeout(() => {
           log = '2'
           resolve()
-        })
+        }, 10)
       })
     }
 
     let queue = new DefererQueue({ mode: 'switch' })
-    queue.push(defer1)
-    queue.push(defer2)
+    queue.push(defer1).then(() => console.log('1'))
+    queue.push(defer2).then(() => console.log('2'))
 
     queue.onEnd(() => {
       expect(log).toBe('2')
