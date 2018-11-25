@@ -1,11 +1,15 @@
 {
   "name": "deferer-queue",
   "version": "1.1.0",
-  "description": "",
+  "description": "A queue mananger for async operating.",
   "main": "dist/deferer-queue.js",
   "scripts": {
     "test": "jest",
     "build": "rm -rf dist && mkdir dist && webpack"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tangshuang/deferer-queue.git"
   },
   "author": "tisontang",
   "license": "ISC",
