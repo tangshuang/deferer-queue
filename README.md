@@ -56,7 +56,8 @@ All of these parameters are functions.
 queue.push(defer1).then(callback).catch(fallback)
 // is like:
 queue.push(defer1, callback, fallback)
-// however, callback/fallback in then/catch come before success/fail
+// however, success/fail come before callback/fallback in then/catch
+// and success/fail are run in sync in process, and then/catch run in async
 ```
 
 _How to use axios with cancel？_
