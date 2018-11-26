@@ -43,11 +43,12 @@ options:
 - autoStart: whether to run queue immediately when invoke `push`
 - delay: number, default 0, delay to start the queue when push() or start()
 
-### push(defer, success, fail)
+### push(defer, success, fail, cancel)
 
 - defer: a function which return an instance of Promise
 - success: invoke after deferer resolved
 - fail: invoke after deferer rejected
+- cancel: invoke when a defer is going to be canceled
 
 All of these parameters are functions.
 
