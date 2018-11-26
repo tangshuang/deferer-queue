@@ -4,15 +4,16 @@ export class DefererQueue {
     this.callbacks = []
     this.fallbacks = []
     this.status = 0
-    this.options = Object.assign({}, { mode: 'parallel', autoStart: true }, options || {})
+
+    const defaultOptions = {
+      mode: 'parallel',
+      autoStart: true, // whether to auto start when push
+      delay: 0, // whether to delay start when push
+    }
+    this.options = Object.assign({}, defaultOptions, options || {})
   }
   push(defer, callback, fallback, cancel) {
     const item = { defer, callback, fallback, cancel, status: 0 }
-
-    if (this.options.mode === 'parallel') {
-      item.deferer = typeof defer === 'function' ? defer() : defer
-      item.status = 1
-    }
 
     item.promise = new Promise((resolve, reject) => {
       item.resolve = resolve
@@ -28,13 +29,12 @@ export class DefererQueue {
     return item.promise
   }
   stop(e) {
-    this.queue.forEach((item) => item.status === 1 && typeof item.cancel === 'function' && item.cancel())
     this.status = -1
     this.fallbacks.forEach(fn => fn(e || new Error('stop')))
     return this
   }
   clear() {
-    this.queue.forEach((item) => typeof item.cancel === 'function' && item.cancel())
+    this.queue.forEach(item => typeof item.cancel === 'function' && item.cancel())
     this.queue.length = 0
     return this
   }
@@ -44,29 +44,58 @@ export class DefererQueue {
       return this
     }
 
+    if (typeof item.cancel === 'function') {
+      item.cancel()
+    }
+
     let index = this.queue.findIndex(item => item.defer === defer)
-    typeof item.cancel === 'function' && item.cancel()
     this.queue.splice(index, 1)
+
     return this
   }
   end() {
-    this.queue.forEach((item) => typeof item.cancel === 'function' && item.cancel())
     this.status = 2
     this.queue.length = 0
     this.callbacks.forEach(fn => fn())
     return this
   }
   start() {
+    // convert status
+    if (this.status === 2) {
+      this.status = 0
+    }
+
+    // delay to start, which set this.status 0.x means it's delayed to start
+    if (this.options.delay > 0 && this.status >= 0 && this.status < 0.5) {
+      // ensure setTimeout run only once
+      if (this.status === 0) {
+        setTimeout(() => {
+          this.status = 0.9 // set a number which will not block the processing
+          this.start()
+        }, this.options.delay)
+      }
+
+      this.status = 0.1
+      return
+    }
+
+    // emit all items in queue once
+    if (this.options.mode === 'parallel') {
+      this.queue.forEach((item) => {
+        item.deferer = item.deferer || item.defer()
+      })
+    }
+
     // if queue is runing or destoryed, start will be disabled
-    if (this.status === 1 || this.status < -1) {
+    if (this.options.mode !== 'switch' && (this.status === 1 || this.status < -1)) {
       return
     }
 
     const run = () => {
-      // ended or stopped
       if (this.status !== 1) {
         return
       }
+
       // finish normally
       // or finish with cancel/clear
       if (!this.queue.length) {
@@ -79,36 +108,33 @@ export class DefererQueue {
         run[mode]()
       }
     }
-    const shouldBeDroppedWhenFinish = (item) => {
-      // item !== this.queue[0] means clear/stop/end/cancel was run during the defer is running
-      // so that there is no need to run item any more
-      return !this.queue[0] || item !== this.queue[0]
-    }
-    const success = (item) => (...args) => {
-      item.status = 2
-
-      if (shouldBeDroppedWhenFinish(item)) {
+    const success = (item) => (res) => {
+      // clear/stop/end/cancel was run during the defer is running
+      // so that there is no need to run the callbacks of this item any more
+      if (this.queue.length && this.queue[0] !== item) {
         run()
         return
       }
 
       const { callback, resolve } = item
-      typeof callback === 'function' && callback(...args)
-      resolve(...args)
+      if (typeof callback === 'function') {
+        callback(res)
+      }
+      resolve(res)
 
       this.queue.shift()
       run()
     }
     const fail = (item) => (e) => {
-      item.status = -1
-
-      if (shouldBeDroppedWhenFinish(item)) {
+      if (this.queue.length && this.queue[0] !== item) {
         run()
         return
       }
 
       const { fallback, reject } = item
-      typeof fallback === 'function' && fallback(e)
+      if (typeof fallback === 'function') {
+        fallback(e)
+      }
       reject(e)
       this.fallbacks.forEach(fn => fn(e))
 
@@ -119,122 +145,122 @@ export class DefererQueue {
     run.serial = () => {
       const item = this.queue[0]
       const { defer } = item
-
-      item.status = 1
       item.deferer = defer().then(success(item)).catch(fail(item))
     }
     // in parallel
     run.parallel = () => {
       const item = this.queue[0]
       const { deferer } = item
-
-      item.status = 1
       deferer.then(success(item)).catch(fail(item))
     }
+
     // only use the last item
     run.switch = () => {
       const item = this.queue.pop()
       const { defer, callback, fallback, resolve, reject } = item
 
-      // clear the queue,
-      this.queue = [item]
+      // clear the queue, only leave the running one
+      this.clear()
+      this.queue.push(item)
 
-      item.status = 1
-      item.deferer = defer().then((...args) => {
-        item.status = 2
-
-        if (shouldBeDroppedWhenFinish(item)) {
-          run()
+      item.deferer = defer().then((res) => {
+        // the item is canceled, drop it directly
+        // the pushed item is running, and do not need to fire it any more
+        if (this.queue.length && this.queue[0] !== item) {
           return
         }
 
-        // remove current item
-        this.queue.shift()
-
-        // drop the current running defer if a new one pushed
-        if (this.queue.length) {
-          run()
-          return
+        if (typeof callback === 'function') {
+          callback(res)
         }
-
-        typeof callback === 'function' && callback(...args)
-        resolve(...args)
+        resolve(res)
 
         this.end()
       }).catch((e) => {
-        item.status = -1
-
-        if (shouldBeDroppedWhenFinish(item)) {
-          run()
+        if (this.queue.length && this.queue[0] !== item) {
           return
         }
 
-        // remove current item
-        this.queue.shift()
-
-        // drop the current running defer if a new one pushed
-        if (this.queue.length) {
-          run()
-          return
+        if (typeof fallback === 'function') {
+          fallback(e)
         }
-
-        typeof fallback === 'function' && fallback(e)
         reject(e)
+
         this.fallbacks.forEach(fn => fn(e))
+        this.status = 2
       })
     }
+
     // only use the first/latest item
     run.shift = () => {
       const item = this.queue.shift()
+
+      // drop the other defers, only need the first one
+      this.clear()
+      this.queue.push(item)
+
       const runLatest = (item) => {
-        let { defer, callback, fallback, resolve, reject } = item
-
-        item.status = 1
-        item.deferer = defer().then((...args) => {
-          item.status = 2
-
-          // the queue was not changed, which means stop/cancel/end/clear was not called
-          if (this.queue[0] === item) {
-            typeof callback === 'function' && callback(...args)
-            resolve(...args)
-
-            // remove current item
-            this.queue.shift()
+        const { defer, callback, fallback, resolve, reject } = item
+        item.deferer = defer().then((res) => {
+          if (this.queue.length && this.queue[0] !== item) {
+            run()
+            return
           }
 
-          // if there are some new defers pushed into queue, use the latest to continue
+          if (typeof callback === 'function') {
+            callback(res)
+          }
+          resolve(res)
+
           if (this.queue.length) {
-            item = this.queue.pop()
-            this.queue = [item]
-            runLatest(item)
+            const latest = this.queue.pop()
+
+            // current one is the last one in queue, end the queue
+            if (latest === item) {
+              this.end()
+              return
+            }
+
+            this.clear()
+            this.queue.push(latest)
+
+            runLatest(latest)
           }
           else {
             this.end()
           }
         }).catch((e) => {
-          item.status = -1
-
-          // the queue was not changed, which means stop/cancel/end/clear was not called
-          if (this.queue[0] === item) {
-            typeof fallback === 'function' && fallback(e)
-            reject(e)
-            this.fallbacks.forEach(fn => fn(e))
-
-            // remove current item
-            this.queue.shift()
+          if (this.queue.length && this.queue[0] !== item) {
+            run()
+            return
           }
+
+          if (typeof fallback === 'function') {
+            fallback(e)
+          }
+          reject(e)
+          this.fallbacks.forEach(fn => fn(e))
 
           // even though there is an error, the queue will continue
           if (this.queue.length) {
-            item = this.queue.pop()
-            this.queue = [item]
-            runLatest(item)
+            const latest = this.queue.pop()
+
+            // current one is the last one in queue, end the queue
+            if (latest === item) {
+              this.end()
+              return
+            }
+
+            this.clear()
+            this.queue.push(latest)
+
+            runLatest(latest)
+          }
+          else {
+            this.status = 2
           }
         })
       }
-
-      // drop the other defers, only need the first one
-      this.queue = [item]
 
       runLatest(item)
     }

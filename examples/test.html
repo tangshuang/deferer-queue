@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+
+<script src="../dist//deferer-queue.js"></script>
+
+<script>
+const { DefererQueue } = window['deferer-queue'];
+
+(function() {
+	let log = ''
+	let defer1 = () => new Promise((resolve) => setTimeout(() => resolve('1'), 500))
+	let defer2 = () => new Promise((resolve) => setTimeout(() => resolve('2'), 200))
+
+	let queue = new DefererQueue()
+	queue.push(defer1, num => { log += num })
+	queue.push(defer2, num => { log += num })
+
+	queue.onEnd(() => {
+		console.log('parallel', log + '=12')
+	})
+})();
+
+(function() {
+	let log = ''
+	let defer1 = () => new Promise((resolve) => setTimeout(() => resolve('1'), 500))
+	let defer2 = () => new Promise((resolve) => setTimeout(() => resolve('2'), 500))
+
+	let queue = new DefererQueue({ mode: 'serial' })
+	queue.push(defer1, num => { log += num })
+	queue.push(defer2, num => { log += num })
+
+	queue.onEnd(() => {
+		console.log('serial', log + '=12')
+	})
+})();
+
+(function() {
+	let log = ''
+	let defer1 = () => new Promise((resolve) => setTimeout(() => resolve('1'), 500))
+	let defer2 = () => new Promise((resolve) => setTimeout(() => resolve('2'), 500))
+
+	let queue = new DefererQueue({ mode: 'switch' })
+	queue.push(defer1, num => { log += num })
+	queue.push(defer2, num => { log += num })
+
+	queue.onEnd(() => {
+		console.log('switch', log + '=2')
+	})
+})();
+
+(function() {
+	let log = ''
+	let defer1 = () => new Promise((resolve) => setTimeout(() => resolve('1'), 250)) // start with
+	let defer2 = () => new Promise((resolve) => setTimeout(() => resolve('2'), 500)) // be dropped
+	let defer3 = () => new Promise((resolve) => setTimeout(() => resolve('3'), 500)) // push during running, but be dropped
+	let defer4 = () => new Promise((resolve) => setTimeout(() => resolve('4'), 200)) // push during running
+
+	let queue = new DefererQueue({ mode: 'shift' })
+	queue.push(defer1, num => { log += num })
+	queue.push(defer2, num => { log += num })
+	setTimeout(() => {
+		queue.push(defer3, num => { log += num })
+		queue.push(defer4, num => { log += num })
+	}, 200)
+
+	queue.onEnd(() => {
+		console.log('shift', log + '=14')
+	})
+})();
+</script>
