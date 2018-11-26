@@ -88,11 +88,11 @@ const defer = () => {
   xhr.open(method, url, true)
   xhr.send()
 
-  defer.cancel = () => xhr.abort()
-
-  // ... should return a promise
+  const deferer = new Promise(...)
+  deferer.cancel = () => xhr.abort()
+  return deferer
 }
-queue.push(defer, null, null, defer => defer.canel())
+queue.push(defer, null, null, deferer => deferer.cancel())
 ```
 
 ### start()

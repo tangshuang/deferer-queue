@@ -34,7 +34,7 @@ export class DefererQueue {
     return this
   }
   clear() {
-    this.queue.forEach(item => typeof item.cancel === 'function' && item.cancel(item.defer))
+    this.queue.forEach(item => typeof item.cancel === 'function' && item.cancel(item.deferer))
     this.queue.length = 0
     return this
   }
@@ -45,7 +45,7 @@ export class DefererQueue {
     }
 
     if (typeof item.cancel === 'function') {
-      item.cancel(item.defer)
+      item.cancel(item.deferer)
     }
 
     let index = this.queue.findIndex(item => item.defer === defer)
