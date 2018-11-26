@@ -43,12 +43,11 @@ options:
 - autoStart: whether to run queue immediately when invoke `push`
 - delay: number, default 0, delay to start the queue when push() or start()
 
-### push(defer, success, fail, cancel)
+### push(defer, success, fail)
 
 - defer: a function which return an instance of Promise
 - success: invoke after deferer resolved
 - fail: invoke after deferer rejected
-- cancel: when a deferer is being dropped, cancel will be run
 
 All of these parameters are functions.
 
@@ -63,18 +62,37 @@ _How to use axios with cancel？_
 
 ```js
 const CancelToken = axios.CancelToken
-const cancel = () => {}
-const defer1 = () => {
-  let token = new CancelToken(c => { cancel = c })
+
+let cancel = null
+let token = new CancelToken(c => { cancel = c })
+
+const defer = () => {
   return axios.get(url, { cancelToken: token })
 }
 
 const queue = new DefererQueue()
-queue.push(defer1, null, null, cancel).then(res => console.log(res))
+queue.push(defer, null, null, cancel).then(res => console.log(res))
 ```
 
 ```js
-queue.cancel(defer1)
+queue.cancel(defer)
+```
+
+_How to use XHR with abort?_
+
+```js
+const defer = () => {
+  let xhr = new XMLHttpRequest()
+  let method = "GET"
+  let url = "https://developer.mozilla.org/"
+  xhr.open(method, url, true)
+  xhr.send()
+
+  defer.cancel = () => xhr.abort()
+
+  // ... should return a promise
+}
+queue.push(defer, null, null, defer => defer.canel())
 ```
 
 ### start()
