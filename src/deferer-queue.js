@@ -9,6 +9,7 @@ export class DefererQueue {
       mode: 'parallel',
       autoStart: true, // whether to auto start when push
       delay: 0, // whether to delay start when push
+      debounce: 0,
     }
     this.options = Object.assign({}, defaultOptions, options || {})
   }
@@ -63,6 +64,18 @@ export class DefererQueue {
     // convert status
     if (this.status === 2) {
       this.status = 0
+    }
+
+    // debounce to start, before delay
+    if (this.options.debounce > 0 && this.status >= 0 && this.status < 0.1) {
+      clearTimeout(this.debouncer)
+      this.debouncer = setTimeout(() => {
+        this.status = 0.1
+        this.start()
+      }, this.options.debounce)
+
+      this.status = 0.05
+      return
     }
 
     // delay to start, which set this.status 0.x means it's delayed to start

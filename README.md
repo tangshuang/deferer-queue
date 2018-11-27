@@ -42,6 +42,7 @@ options:
   - shift: use first defer at the start of queue, then use the latest defer after the previous defer finish
 - autoStart: whether to run queue immediately when invoke `push`
 - delay: number, default 0, delay to start the queue when push() or start()
+- debounce: number, default 0, debounce come before delay
 
 ### push(defer, success, fail, cancel)
 
