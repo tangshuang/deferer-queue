@@ -5,6 +5,8 @@ export class DefererQueue {
     this.fallbacks = []
     this.status = 0
 
+    this.debounced = false
+
     const defaultOptions = {
       mode: 'parallel',
       autoStart: true, // whether to auto start when push
@@ -67,14 +69,14 @@ export class DefererQueue {
     }
 
     // debounce to start, before delay
-    if (this.options.debounce > 0 && this.status >= 0 && this.status < 0.1) {
+    if (this.options.debounce > 0 && !this.debounced) {
       clearTimeout(this.debouncer)
       this.debouncer = setTimeout(() => {
-        this.status = 0.1
+        this.debounced = true
         this.start()
+        this.debounced = false
       }, this.options.debounce)
-
-      this.status = 0.05
+      this.debounced = false
       return
     }
 

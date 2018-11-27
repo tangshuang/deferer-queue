@@ -41,8 +41,11 @@ options:
   - switch: always use the last defer, when push a new defer, the old deferers will be dropped
   - shift: use first defer at the start of queue, then use the latest defer after the previous defer finish
 - autoStart: whether to run queue immediately when invoke `push`
-- delay: number, default 0, delay to start the queue when push() or start()
+- delay: number, default 0, delay to start the queue when push() or start() at the first time
 - debounce: number, default 0, debounce come before delay
+
+Skill: use `switch` with `debounce`, `parallel`, `serial` and `shift` with `delay`.
+Notice that, when the queue is running, delay will not work, it only works with a static queue which is going to start.
 
 ### push(defer, success, fail, cancel)
 
