@@ -6,12 +6,14 @@ export class DefererQueue {
     this.status = 0
 
     this.debounced = false
+    this.throttled = false
 
     const defaultOptions = {
       mode: 'parallel',
       autoStart: true, // whether to auto start when push
       delay: 0, // whether to delay start when push
       debounce: 0,
+      throttle: 0,
     }
     this.options = Object.assign({}, defaultOptions, options || {})
   }
@@ -77,6 +79,27 @@ export class DefererQueue {
         this.debounced = false
       }, this.options.debounce)
       this.debounced = false
+      return
+    }
+
+    // throttle to start
+    if (this.options.throttle > 0 && !this.throttled) {
+      let latestTime = this.throttleLatest
+      let currentTime = Date.now()
+      if (latestTime && currentTime < latestTime + this.options.throttle) {
+        clearTimeout(this.throttler)
+        this.throttler = setTimeout(() => {
+          this.throttleLatest = currentTime
+          this.throttled = true
+          this.start()
+          this.throttled = false
+        }, this.options.throttle)
+      }
+      else {
+        this.throttleLatest = currentTime
+        this.start()
+      }
+      this.throttled = false
       return
     }
 
