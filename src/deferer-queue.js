@@ -18,7 +18,7 @@ export class DefererQueue {
     this.options = Object.assign({}, defaultOptions, options || {})
   }
   push(defer, callback, fallback, cancel) {
-    const item = { defer, callback, fallback, cancel, status: 0 }
+    const item = { defer, callback, fallback, cancel }
 
     item.promise = new Promise((resolve, reject) => {
       item.resolve = resolve
@@ -189,6 +189,12 @@ export class DefererQueue {
     run.parallel = () => {
       const item = this.queue[0]
       const { deferer } = item
+
+      // the item is not in the circle because of debounce or throttle
+      if (!deferer) {
+        return
+      }
+
       deferer.then(success(item)).catch(fail(item))
     }
 
@@ -204,6 +210,7 @@ export class DefererQueue {
       item.deferer = defer().then((res) => {
         // the item is canceled, drop it directly
         // the pushed item is running, and do not need to fire it any more
+        // it means to drop this item
         if (this.queue.length && this.queue[0] !== item) {
           return
         }

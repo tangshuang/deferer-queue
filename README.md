@@ -42,9 +42,10 @@ options:
   - shift: use first defer at the start of queue, then use the latest defer after the previous defer finish
 - autoStart: whether to run queue immediately when invoke `push`
 - delay: number, default 0, delay to start the queue when push() or start() at the first time
-- debounce: number, default 0, debounce come before delay
+- debounce: number, default 0, debounce come before delay and throttle
+- throttle: number, default 0, throttle come before delay
 
-Skill: use `switch` with `debounce`, `parallel`, `serial` and `shift` with `delay`.
+It recommands that: `debounce` works with `switch`; `delay` works with `parallel`, `serial` and `shift`; `throttle` works with `serial` `switch` and `shift`.
 Notice that, when the queue is running, delay will not work, it only works with a static queue which is going to start.
 
 ### push(defer, success, fail, cancel)
@@ -170,10 +171,10 @@ After destory, the queue is broken, don't use it any more.
 ## Development
 
 ```
-tnpm i
-tnpm test
+npm i
+npm test
 ```
 
 ```
-tnpm run build
+npm run build
 ```
