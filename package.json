@@ -1,6 +1,6 @@
 {
   "name": "deferer-queue",
-  "version": "1.2.10",
+  "version": "1.2.11",
   "description": "A queue mananger for async operating.",
   "main": "dist/deferer-queue.js",
   "scripts": {
