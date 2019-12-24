@@ -1,4 +1,4 @@
-module.exports = {
+const cjs = {
   mode: 'none',
   devtool: 'source-map',
   entry: __dirname + '/src/deferer-queue.js',
@@ -7,7 +7,7 @@ module.exports = {
     filename: 'deferer-queue.js',
     library: 'deferer-queue',
     libraryTarget: 'umd',
-    globalObject: 'typeof window !== undefined ? window : typeof global !== undefined ? global : typeof self !== undefined ? self : this',
+    globalObject: `typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : this`,
   },
   module: {
     rules: [
@@ -23,3 +23,20 @@ module.exports = {
     sideEffects: true,
   },
 }
+
+const dist = {
+  ...cjs,
+  output: {
+    ...cjs.output,
+    filename: 'deferer-queue.min.js',
+  },
+  optimization: {
+    ...cjs.optimization,
+    minimize: true,
+  },
+}
+
+module.exports = [
+  cjs,
+  dist,
+]

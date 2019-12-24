@@ -1,1 +1,5 @@
 node_modules/
+.babelrc
+test/
+examples/
+webpack.config.js
