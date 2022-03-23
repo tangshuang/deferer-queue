@@ -6,7 +6,7 @@ A deferer queue manager.
 ## Install
 
 ```
-tnpm i deferer-queue
+npm i deferer-queue
 ```
 
 ## Usage
