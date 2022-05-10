@@ -120,7 +120,7 @@ export class DefererQueue {
     // emit all items in queue once
     if (this.options.mode === 'parallel') {
       this.queue.forEach((item) => {
-        item.deferer = item.deferer || item.defer()
+        item.deferer = item.deferer || Promise.resolve(item.defer())
       })
     }
 
@@ -183,7 +183,7 @@ export class DefererQueue {
     run.serial = () => {
       const item = this.queue[0]
       const { defer } = item
-      item.deferer = defer().then(success(item)).catch(fail(item))
+      item.deferer = Promise.resolve(defer()).then(success(item)).catch(fail(item))
     }
     // in parallel
     run.parallel = () => {
@@ -207,7 +207,7 @@ export class DefererQueue {
       this.clear()
       this.queue.push(item)
 
-      item.deferer = defer().then((res) => {
+      item.deferer = Promise.resolve(defer()).then((res) => {
         // the item is canceled, drop it directly
         // the pushed item is running, and do not need to fire it any more
         // it means to drop this item
@@ -246,7 +246,7 @@ export class DefererQueue {
 
       const runLatest = (item) => {
         const { defer, callback, fallback, resolve, reject } = item
-        item.deferer = defer().then((res) => {
+        item.deferer = Promise.resolve(defer()).then((res) => {
           if (this.queue.length && this.queue[0] !== item) {
             run()
             return
